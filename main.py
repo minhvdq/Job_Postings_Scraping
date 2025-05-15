@@ -97,11 +97,12 @@ def generate_email ( job_data, resume_data ):
     return response.choices[0].message.content.strip()
 
 def main_implememtation( url ): 
-    resume_path = "./resumes/Minh_Vu.pdf"
+    resume_path = "./resumes/resume.pdf"
     resume_data = extract_text_from_pdf(resume_path)
     raw_data = get_raw_html( url )
     # print(f"Raw data to be: {raw_data}")
     job_data = extract_job_details_raw_text(raw_data)
+    print(job_data)
 
     coldemail = generate_email(job_data, resume_data)
     print(coldemail)
@@ -109,5 +110,6 @@ def main_implememtation( url ):
 # Example Job Posting Urls
 url_linkedin = "https://www.linkedin.com/jobs/search/?alertAction=viewjobs&currentJobId=4182056028&distance=25&f_TPR=a1741690540-&f_WT=2&geoId=103644278&keywords=software%20engineer&origin=JOB_ALERT_IN_APP_NOTIFICATION&originToLandingJobPostings=4182056028&savedSearchId=1736536797&sortBy=R"
 url_glassdoor = "https://job-boards.greenhouse.io/genies/jobs/6506648003?utm_source=Simplify&ref=Simplify"
+url_workday = "https://chghealthcare.wd1.myworkdayjobs.com/en-US/External/job/Software-Engineering-Intern--Summer-2025_JR102937"
 
-main_implememtation(url_linkedin)
+main_implememtation(url_workday)

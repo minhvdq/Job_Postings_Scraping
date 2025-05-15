@@ -77,6 +77,10 @@ def generate_email(job_data, resume_data):
     **My Resume:** {resume_data}  
 
     Keep the tone professional yet friendly, making it easy for the recruiter to skim quickly while still leaving a strong impression. Avoid unnecessary details or long sentences.
+    **Rules**
+    - Keep the cold email as close to the resume as possible. 
+    - Dont generate technical content that deos not appear on resume
+    - Each experience has the tech stack section, don't go beyond them for the cold email
     """
 
     # 🔹 Call OpenAI API to generate the email
@@ -90,7 +94,7 @@ def generate_email(job_data, resume_data):
     return response.choices[0].message.content.strip()
 
 def main_implementation(url):
-    resume_path = "./resumes/Minh_Vu.pdf"
+    resume_path = "./resumes/resume.pdf"
     resume_data = extract_text_from_pdf(resume_path)
 
     # Extract raw HTML job data
