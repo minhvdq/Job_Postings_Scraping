@@ -4,6 +4,7 @@ A Streamlit web application that helps job seekers generate personalized cold em
 
 ## Features
 
+
 - Extracts job details from job posting URLs
 - Analyzes your resume to match relevant experience
 - Generates personalized cold emails using GPT-4
