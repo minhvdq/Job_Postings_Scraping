@@ -7,11 +7,10 @@ from openai import OpenAI
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 import markdown  # Necessary for the copy button
+import pypdf
 
-# --- Assuming these functions exist in your project ---
-# Make sure you have these files in your project directory
+# --- Assuming get_raw_html exists in your project ---
 from extract_html import get_raw_html
-from extract_pdf import extract_text_from_pdf
 # ----------------------------------------------------
 
 # Load variables from .env file
@@ -21,6 +20,24 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # 🔹 Initialize OpenAI Client
 client = OpenAI(api_key=OPENAI_API_KEY)
+
+
+# 📄 --- NEW & IMPROVED PDF EXTRACTION FUNCTION --- 📄
+# This function is written to handle both local file paths and Streamlit file-like objects.
+def extract_text_from_pdf(source):
+    """
+    Extracts text from a PDF file. The source can be a file path (string)
+    or a file-like object (from Streamlit's file_uploader).
+    """
+    try:
+        pdf_reader = pypdf.PdfReader(source)
+        text = ""
+        for page in pdf_reader.pages:
+            text += page.extract_text() or ""
+        return text
+    except Exception as e:
+        st.error(f"❌ Error extracting text from PDF: {e}")
+        return None
 
 #
 # --- UNCHANGED HELPER FUNCTION ---
@@ -71,7 +88,7 @@ def extract_job_details_raw_text(raw_text):
         return None
 
 #
-# --- NEW FUNCTION TO GENERATE EMAIL AND RESUME ADVICE ---
+# --- UNCHANGED FUNCTION TO GENERATE EMAIL AND RESUME ADVICE ---
 #
 def generate_email_and_resume_advice(job_data, resume_data):
     """
@@ -143,12 +160,11 @@ def generate_email_and_resume_advice(job_data, resume_data):
         st.error(f"❌ An error occurred during generation: {e}")
         return None, None
 
-def main_implementation(url):
-    resume_path = "./resumes/resume.pdf"
-    # Using your imported function
-    resume_data = extract_text_from_pdf(resume_path)
-
-    # Using your imported function
+def main_implementation(url, resume_data):
+    """
+    Main function to fetch job details and generate content.
+    Now accepts resume data directly.
+    """
     raw_data = get_raw_html(url)
     if not raw_data:
         return "Failed to fetch content from URL.", None
@@ -156,7 +172,6 @@ def main_implementation(url):
     job_data = extract_job_details_raw_text(raw_data)
 
     if job_data:
-        # Call the new function that returns both email and advice
         cold_email, resume_advice = generate_email_and_resume_advice(job_data, resume_data)
         return cold_email, resume_advice
     else:
@@ -196,11 +211,12 @@ def create_copy_button(email_content_markdown):
         document.getElementById('copyBtn').addEventListener('click', copyHtmlToClipboard);
         </script>
     </div>
+    </div>
     """
     return component_html
 
 #
-# --- STREAMLIT UI UPDATED FOR BOTH OUTPUTS ---
+# --- STREAMLIT UI UPDATED FOR BOTH OUTPUTS AND RESUME UPLOAD ---
 #
 st.set_page_config(layout="wide")
 st.title("🎯 AI Job Application Assistant")
@@ -208,33 +224,51 @@ st.write("Enter a job posting URL to generate a tailored cold email and get advi
 
 job_url = st.text_input("Job Posting URL", placeholder="e.g., [https://www.linkedin.com/jobs/view/](https://www.linkedin.com/jobs/view/)...")
 
+# --- NEW: Resume Upload Button ---
+uploaded_resume = st.file_uploader("Or, upload your own resume (PDF)", type=["pdf"])
+
 if st.button("Generate", type="primary"):
     if job_url:
         with st.spinner("Analyzing job, crafting email, and preparing resume advice..."):
-            cold_email, resume_advice = main_implementation(job_url)
-            
-            if cold_email and resume_advice:
-                st.success("✨ Success! Your email and resume advice are ready.")
-                st.write("---")
-
-                col1, col2 = st.columns(2)
-
-                with col1:
-                    st.subheader("📧 Email Preview")
-                    # Display the formatted email for the user to see
-                    with st.container(border=True):
-                        st.markdown(cold_email, unsafe_allow_html=True)
-                    
-                    # Display the custom copy button
-                    copy_button_component = create_copy_button(cold_email)
-                    st.components.v1.html(copy_button_component, height=50)
-
-                with col2:
-                    st.subheader("💡 Resume Tailoring Suggestions")
-                    with st.container(border=True):
-                        st.markdown(resume_advice, unsafe_allow_html=True)
-
+            # --- Conditional logic to get resume data ---
+            resume_data = None
+            if uploaded_resume:
+                # Use the content of the uploaded PDF
+                resume_data = extract_text_from_pdf(uploaded_resume)
             else:
-                st.error("Something went wrong. Please check the URL and try again.")
+                # Use the default resume file
+                resume_path = "./resumes/resume.pdf"
+                if os.path.exists(resume_path):
+                    resume_data = extract_text_from_pdf(resume_path)
+                else:
+                    st.error("❌ Default resume file not found at './resumes/resume.pdf'. Please upload a resume.")
+            
+            if resume_data:
+                # --- Pass the selected resume data to the main function ---
+                cold_email, resume_advice = main_implementation(job_url, resume_data)
+                
+                if cold_email and resume_advice:
+                    st.success("✨ Success! Your email and resume advice are ready.")
+                    st.write("---")
+
+                    col1, col2 = st.columns(2)
+
+                    with col1:
+                        st.subheader("📧 Email Preview")
+                        # Display the formatted email for the user to see
+                        with st.container(border=True):
+                            st.markdown(cold_email, unsafe_allow_html=True)
+                        
+                        # Display the custom copy button
+                        copy_button_component = create_copy_button(cold_email)
+                        st.components.v1.html(copy_button_component, height=50)
+
+                    with col2:
+                        st.subheader("💡 Resume Tailoring Suggestions")
+                        with st.container(border=True):
+                            st.markdown(resume_advice, unsafe_allow_html=True)
+                else:
+                    st.error("Something went wrong. Please check the URL and try again.")
+
     else:
         st.warning("Please enter a job URL to begin.")
